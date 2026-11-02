@@ -16,6 +16,11 @@
     node.append(...children);
     return node;
   };
+  const formatTime = seconds => {
+    const d = new Date(seconds * 1000);
+    const two = value => String(value).padStart(2, "0");
+    return `${d.getFullYear()}-${two(d.getMonth() + 1)}-${two(d.getDate())} ${two(d.getHours())}:${two(d.getMinutes())}:${two(d.getSeconds())}`;
+  };
   const TONE = {updated: "ok", error: "bad", "dry-run": "warn", unmapped: "warn"};
   const STYLE = `
     :host{all:initial}*{box-sizing:border-box}
@@ -29,6 +34,8 @@
     .row{display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin-top:10px}.grow{flex:1;min-width:140px}
     .check{display:flex;gap:8px;align-items:center;margin:6px 0}.stats{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:10px}.stats b{display:block;font-size:13px;color:#9aa3ad;font-weight:600}
     .item{display:flex;gap:10px;align-items:center;padding:8px 0;border-top:1px solid #333941;flex-wrap:wrap}.item>div{flex:1;min-width:150px;overflow-wrap:anywhere}.item img{width:36px;height:52px;object-fit:cover;border-radius:3px}
+    .time{font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace}
+    .scroll{max-height:320px;overflow-y:auto;overscroll-behavior:contain}
     .log{overflow-wrap:anywhere;padding:6px 0;border-top:1px solid #333941;font-size:14px}`;
 
   let host = null;
@@ -90,7 +97,9 @@
       const filter = el("input", {type: "text", placeholder: "Filter by name"});
       filter.setAttribute("aria-label", "Filter by name");
       const unlinked = el("div", {className: "hint"});
-      const activity = el("div");
+      const activity = el("div", {className: "scroll", tabIndex: 0});
+      activity.setAttribute("role", "log");
+      activity.setAttribute("aria-label", "Activity");
       const preview = el("button", {textContent: "Preview in activity"});
       const send = el("button", {textContent: "Send to AniList"});
       const pastResult = el("span");
@@ -161,7 +170,7 @@
         me = state; showStatus();
         preview.disabled = send.disabled = me.backfill_running;
         activity.replaceChildren(...log.slice(0, 40).map(row => el("div", {className: "log"},
-          el("span", {className: "hint", textContent: `${new Date(row.at * 1000).toLocaleString()} `}),
+          el("span", {className: "hint time", textContent: `${formatTime(row.at)} `}),
           el("span", {className: TONE[row.kind] || "", textContent: `${row.kind} `}),
           el("span", {textContent: `${row.name ? row.name + ": " : ""}${row.detail}`}))));
         if (!log.length) activity.replaceChildren(hint("Nothing yet."));
