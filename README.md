@@ -28,7 +28,7 @@ Each series page has its own button, to preview, send, edit volume progress or c
    }
    ```
 
-3. Load the panel in Kavita. It has to be added to `index.html` each time the container is recreated; `injector/kavita-anilist-sync.sh` does this as a start-up step.
+3. Load the panel in Kavita. It has to be added to `index.html` each time the container is recreated; `injector/kavita-anilist-sync.sh` does this as a start-up step. If Kavita is also opened through another address, such as a LAN IP, set `PANEL_URL` in that script to the full public URL of `panel.js` and list the other address in `CORS_ORIGINS`, for example `CORS_ORIGINS=http://192.168.0.10:5000`. `CORS_ORIGINS=private` allows any LAN or localhost address, on any port.
 4. As a Kavita admin, open the panel and create a client at [AniList developer settings](https://anilist.co/settings/developer) with the redirect URL shown there. Save its ID.
 5. Each user opens the panel, uses **Connect AniList**, selects libraries and reads a volume. When **Activity** looks right, they turn off **Dry run**.
 
@@ -47,7 +47,7 @@ An admin must have opened the panel once, because Kavita only sends live progres
 
 ## Security
 
-Every API call needs a valid Kavita session, which Kavita itself verifies. AniList tokens and Kavita keys live in `data/sync.sqlite` and are never sent to the browser.
+Every API call needs a valid Kavita session, which Kavita itself verifies. Other sites cannot call the API from a browser unless their address is listed in `CORS_ORIGINS`. AniList tokens and Kavita keys live in `data/sync.sqlite` and are never sent to the browser.
 
 ## Tests
 

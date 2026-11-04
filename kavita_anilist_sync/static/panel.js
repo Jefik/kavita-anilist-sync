@@ -1,5 +1,5 @@
 (() => {
-  const BASE = new URL(document.currentScript.src).pathname.replace(/\/panel\.js$/, "");
+  const BASE = new URL(document.currentScript.src).href.replace(/\/panel\.js(\?.*)?$/, "");
   const session = () => {
     try { return JSON.parse(localStorage.getItem("kavita-user"))?.token || null; } catch { return null; }
   };
@@ -134,7 +134,7 @@
             catch (error) { failure(result, error); }
           };
           account.append(
-            el("div", {className: "row"}, el("div", {className: "grow"}, hint(`Admin: AniList client ID, with redirect URL ${location.origin}${BASE}/callback`), id), save, result));
+            el("div", {className: "row"}, el("div", {className: "grow"}, hint(`Admin: AniList client ID, with redirect URL ${BASE}/callback`), id), save, result));
         }
       }
 

@@ -23,9 +23,35 @@ def _hosts():
     return LOCAL_HOSTS | {h.strip().lower() for h in extra.split(",") if h.strip()}
 
 
+PRIVATE_ORIGIN = re.compile(
+    r"^https?://(localhost|([a-z0-9-]+\.)+local|127(\.\d{1,3}){3}|10(\.\d{1,3}){3}|192\.168(\.\d{1,3}){2}"
+    r"|172\.(1[6-9]|2\d|3[01])(\.\d{1,3}){2}|\[::1\])(:\d{1,5})?$")
+
+
+def _cors_origins():
+    return {o.strip().rstrip("/").lower() for o in os.environ.get("CORS_ORIGINS", "").split(",") if o.strip()}
+
+
+def _trusted_origin(origin):
+    """Explicit origins, or with "private" any LAN or localhost address. The API still needs a Kavita session."""
+    allowed = _cors_origins()
+    return bool(origin) and (origin in allowed or ("private" in allowed and PRIVATE_ORIGIN.match(origin) is not None))
+
+
 def _host_only(value):
     value = (value or "").lower()
     return value.split("]")[0] + "]" if value.startswith("[") else value.split(":")[0]
+
+
+def _cors_headers(origin):
+    """Lets another address of the same Kavita, such as a LAN IP, use the API. Never with cookies."""
+    return {
+        "Access-Control-Allow-Origin": origin,
+        "Access-Control-Allow-Methods": "GET, PUT, POST, DELETE",
+        "Access-Control-Allow-Headers": "Authorization, Content-Type, X-Requested-With",
+        "Access-Control-Max-Age": "600",
+        "Vary": "Origin",
+    }
 
 
 def create_app(engine):
@@ -55,12 +81,25 @@ def create_app(engine):
 
     @web.middleware
     async def guard(request, handler):
+        response = await _guard(request, handler)
+        origin = (request.headers.get("Origin") or "").rstrip("/").lower()
+        if _trusted_origin(origin) and "Access-Control-Allow-Origin" not in response.headers:
+            response.headers.update(_cors_headers(origin))
+        return response
+
+    async def _guard(request, handler):
         if _host_only(request.host) not in _hosts():
             return bad("Host not allowed", 403)
+        origin = (request.headers.get("Origin") or "").rstrip("/").lower()
+        trusted = _trusted_origin(origin)
+        if request.path.startswith("/api/") and request.method == "OPTIONS":
+            if not trusted:
+                return bad("Origin not allowed", 403)
+            return web.Response(status=204, headers=_cors_headers(origin))
         if request.path.startswith("/api/"):
             if request.method != "GET":
-                origin = request.headers.get("Origin")
-                if request.headers.get("X-Requested-With") != "kas" or (origin and _host_only(origin.split("://")[-1]) != _host_only(request.host)):
+                same_site = origin and _host_only(origin.split("://")[-1]) == _host_only(request.host)
+                if request.headers.get("X-Requested-With") != "kas" or (origin and not same_site and not trusted):
                     return bad("Cross-site request refused", 403)
             header = request.headers.get("Authorization", "")
             token = header[7:] if header.startswith("Bearer ") else ""
